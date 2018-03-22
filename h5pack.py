@@ -78,12 +78,12 @@ def write_indexed(group, data, ds_kwargs):
             ds = group.create_dataset('val', data=np.string_(data),  **ds_kwargs)
         else:
             raise Exception('should not reach here')
-        write_attrs(ds, {'data_type': data_type})
+        # write_attrs(ds, {'data_type': item_type})  # should be the index's type; redundant with the type inside the item
     elif homogeneous_type == 'heterogeneous':
         for i, item in enumerate(data):
             item_type = type(item)
             group_i = group.create_group('{}'.format(i))  # Create new group whose name is the index
-            write_attrs(group_i, {'data_type': data_type})
+            # write_attrs(group_i, {'data_type': item_type})  # should be the index's type; redundant with the type inside the item
             if item_type in collection_types:
                 write_collection(group_i, item, ds_kwargs)
             else:
@@ -92,8 +92,9 @@ def write_indexed(group, data, ds_kwargs):
 
 def clean_key(key):
     """Ensure key is either an int or else coerced to a string"""
+    # TODO: Possibly more sophisticated handling of this. Right now, just coerce everything into a str (when unpacking, the type may allow going back)
     if is_integer_type(type(key)):
-        return key
+        return str(key)
     return str(key)
 
 
@@ -230,6 +231,8 @@ def pack(data, filename, compression=True):
 def unpack(filename):
     """Unpack data from filename"""
 
+    return 0
+
 
 def main():
     # Make some test data
@@ -239,6 +242,7 @@ def main():
     a = 'abc'
     a_file = os.path.join(test_dir, 'a.h5')
     pack(a, a_file)
+    a_ = unpack(a_file)
 
     # List of all strings
     b = ['abc', 'def', 'ghij']
