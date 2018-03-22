@@ -35,9 +35,9 @@ def write_attrs(ds, attrs):
         ds.attrs[k] = v
 
 
-def write_primitive(group, data, attrs):
+def write_primitive(group, data):
     """Note: No dataset chunk options (like compression) for scalar"""
-    data_type = attrs['data_type']
+    data_type = type(data)
 
     # Write dataset
     if data_type == str:
@@ -48,15 +48,17 @@ def write_primitive(group, data, attrs):
         raise Exception('should not reach here')
 
     # Write attrs
-    write_attrs(ds, attrs)
+    write_attrs(ds, {'data_type': data_type})
 
 
-def write_indexed(group, data, attrs, ds_kwargs):
+def write_indexed(group, data, ds_kwargs):
     """
     2 cases:
         1. Homogeneous primitives: turn into a single dataset
         2. Heterogeneous
     """
+    data_type = type(data)
+
     # See if this is homogeneous primitives
     homogeneous_type = 'homogeneous'
     type0 = type(data[0])
@@ -76,16 +78,16 @@ def write_indexed(group, data, attrs, ds_kwargs):
             ds = group.create_dataset('val', data=np.string_(data),  **ds_kwargs)
         else:
             raise Exception('should not reach here')
-        write_attrs(ds, attrs)
+        write_attrs(ds, {'data_type': data_type})
     elif homogeneous_type == 'heterogeneous':
         for i, item in enumerate(data):
             item_type = type(item)
-            attrs['data_type'] = item_type
             group_i = group.create_group('{}'.format(i))  # Create new group whose name is the index
+            write_attrs(group_i, {'data_type': data_type})
             if item_type in collection_types:
-                write_collection(group_i, item, attrs, ds_kwargs)
+                write_collection(group_i, item, ds_kwargs)
             else:
-                write_primitive(group_i, item, attrs)
+                write_primitive(group_i, item)
 
 
 def clean_key(key):
@@ -95,11 +97,12 @@ def clean_key(key):
     return str(key)
 
 
-def write_associative(group, data, attrs, ds_kwargs):
+def write_associative(group, data, ds_kwargs):
     """
     Keys are either ints or strings
     """
-    data_type = attrs['data_type']
+    data_type = type(data)
+
     if data_type == dict:
         # See if it's homogeneous - the keys are all 1 type and he vals are all 1 type
         homogeneous_type = 'homogeneous'
@@ -124,15 +127,19 @@ def write_associative(group, data, attrs, ds_kwargs):
 
             ds_keys = group.create_dataset('keys', data=keys)
             ds_vals = group.create_dataset('vals', data=vals)
+
+            write_attrs(ds_keys, {'data_type': ktype0})
+            write_attrs(ds_vals, {'data_type': vtype0})
         else:
             for k, v in data.items():
-                val_type = type(v)
-                attrs['data_type'] = val_type
+                ktype = type(k)
+                vtype = type(v)
                 group_key = group.create_group(clean_key(k))  # Create new group whose name is key
-                if val_type in collection_types:
-                    write_collection(group_key, v, attrs, ds_kwargs)
+                write_attrs(group_key, {'data_type': ktype})  # Group gets val's type (int or str)
+                if vtype in collection_types:
+                    write_collection(group_key, v, ds_kwargs)
                 else:
-                    write_primitive(group_key, v, attrs)
+                    write_primitive(group_key, v)
 
     elif data_type == set:
         # See if it's homogeneous - the keys are all type
@@ -152,27 +159,30 @@ def write_associative(group, data, attrs, ds_kwargs):
                 keys = np.string_(keys)
 
             ds_keys = group.create_dataset('keys', data=keys)
+            write_attrs(ds_keys, {'data_type': ktype0})
         else:  # Save heterogeneous sets like dicts whose val is 0
             for k in sorted(data):
-                attrs['data_type'] = int
+                ktype = type(k)
                 group_key = group.create_group(clean_key(k))  # Create new group whose name is key
-                write_primitive(group_key, 0, attrs)
+                write_attrs(group_key, {'data_type': ktype})
+                write_primitive(group_key, 0)
 
     else:
         raise Exception('should not reach here')
 
 
-def write_collection(group, data, attrs, ds_kwargs):
+def write_collection(group, data, ds_kwargs):
     """"""
-    data_type = attrs['data_type']
+    data_type = type(data)
 
     # Check whether collection is indexed or associative
     if data_type in indexed_types:
-        write_indexed(group, data, attrs, ds_kwargs)
+        write_indexed(group, data, ds_kwargs)
     elif data_type in associative_types:
-        write_associative(group, data, attrs, ds_kwargs)
+        write_associative(group, data, ds_kwargs)
     elif data_type is np.ndarray:
         ds = group.create_dataset('val', data=data,  **ds_kwargs)
+        write_attrs(ds, {'data_type': data_type})
     else:
         raise Exception('should not reach here')
 
@@ -186,17 +196,16 @@ def write_data(group, data, ds_kwargs):
         data:
     """
     data_type = type(data)
-    attrs = {'data_type': data_type}  # store accumulated attrs
 
     # Check whether type is primitive or collection
     if is_primitive_type(data_type):
-        attrs['combo_type'] = 'primitive'
-        write_primitive(group, data, attrs)
+        write_primitive(group, data)
     elif data_type in collection_types:
-        attrs['combo_type'] = 'collection'
-        write_collection(group, data, attrs, ds_kwargs)
+        write_collection(group, data, ds_kwargs)
     else:
         raise ValueError('Data not one of the valid primitive or collection types')
+
+    write_attrs(group, {'data_type': data_type})
 
 
 def pack(data, filename, compression=True):
@@ -268,7 +277,7 @@ def main():
         'a': 123,
         'b': 'abc',
         'c': np.ones((2,4)),
-        'd': {'qqq', 'rrr', 'sss'}
+        1: {'qqq', 'rrr', 'sss'}  # heterogeneous keys
     }
     g_file = os.path.join(test_dir, 'g.h5')
     pack(g, g_file)
