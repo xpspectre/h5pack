@@ -182,6 +182,18 @@ def clean_key(key):
     return str(key)
 
 
+def get_associative_homogeneous(data):
+    k0, v0 = next(iter(data.items()))
+    ktype0 = type(k0)
+    vtype0 = type(v0)
+    if ktype0 in collection_types or vtype0 in collection_types:
+        return 'heterogeneous'
+    for k, v in data.items():
+        if type(k) != ktype0 or type(v) != vtype0:
+            return 'heterogeneous'
+    return 'homogeneous'
+
+
 def write_associative(group, data, ds_kwargs):
     """
     Keys are either ints or strings
@@ -190,13 +202,7 @@ def write_associative(group, data, ds_kwargs):
 
     if data_type == dict:
         # See if it's homogeneous - the keys are all 1 type and he vals are all 1 type
-        homogeneous_type = 'homogeneous'
-        k0, v0 = next(iter(data.items()))
-        ktype0 = type(k0)
-        vtype0 = type(v0)
-        for k, v in data.items():
-            if type(k) != ktype0 or type(v) != vtype0:
-                homogeneous_type = 'heterogeneous'
+        homogeneous_type = get_associative_homogeneous(data)
         write_attrs(group, {'collection_type': data_type, 'homogeneous_type': homogeneous_type})
 
         # Save homogeneous dict as 2 arrays
@@ -206,15 +212,17 @@ def write_associative(group, data, ds_kwargs):
             for k, v in sorted(data.items()):
                 keys.append(k)
                 vals.append(v)
-            if ktype0 == str:
+            ktype = type(k)
+            vtype = type(v)
+            if ktype == str:
                 keys = np.string_(keys)
-            if vtype0 == str:
+            if vtype == str:
                 vals = np.string_(vals)
 
             ds_keys = group.create_dataset('keys', data=keys)
             ds_vals = group.create_dataset('vals', data=vals)
-            write_attrs(ds_keys, {'data_type': ktype0})
-            write_attrs(ds_vals, {'data_type': vtype0})
+            write_attrs(ds_keys, {'data_type': ktype})
+            write_attrs(ds_vals, {'data_type': vtype})
         else:
             for k, v in data.items():
                 ktype = type(k)
@@ -230,19 +238,19 @@ def write_associative(group, data, ds_kwargs):
         # See if it's homogeneous - the keys are all type
         homogeneous_type = 'homogeneous'
         k0 = next(iter(data))
-        ktype0 = type(k0)
+        ktype = type(k0)
         for k in data:
-            if type(k) != ktype0:
+            if type(k) != ktype:
                 homogeneous_type = 'heterogeneous'
         write_attrs(group, {'collection_type': data_type, 'homogeneous_type': homogeneous_type})
 
         # Save homogeneous set as an array, allowing any type
         if homogeneous_type == 'homogeneous':
             keys = list(data)
-            if ktype0 == str:
+            if ktype == str:
                 keys = np.string_(keys)
             ds_keys = group.create_dataset('keys', data=keys)
-            write_attrs(ds_keys, {'data_type': ktype0})
+            write_attrs(ds_keys, {'data_type': ktype})
         else:  # Save heterogeneous sets like dicts whose val is 0, forcing keys to strings
             for k in data:  # Note: maybe sort these and disallow different types
                 ktype = type(k)
