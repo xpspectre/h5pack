@@ -204,7 +204,7 @@ def write_associative(group, data, ds_kwargs):
             keys = []
             vals = []
             for k, v in sorted(data.items()):
-                keys.append(clean_key(k))
+                keys.append(k)
                 vals.append(v)
             if ktype0 == str:
                 keys = np.string_(keys)
@@ -236,17 +236,14 @@ def write_associative(group, data, ds_kwargs):
                 homogeneous_type = 'heterogeneous'
         write_attrs(group, {'collection_type': data_type, 'homogeneous_type': homogeneous_type})
 
-        # Save homogeneous set as an array
+        # Save homogeneous set as an array, allowing any type
         if homogeneous_type == 'homogeneous':
-            keys = []
-            for k in data:  # Note: maybe sort these and disallow different types
-                keys.append(clean_key(k))
+            keys = list(data)
             if ktype0 == str:
                 keys = np.string_(keys)
-
             ds_keys = group.create_dataset('keys', data=keys)
             write_attrs(ds_keys, {'data_type': ktype0})
-        else:  # Save heterogeneous sets like dicts whose val is 0
+        else:  # Save heterogeneous sets like dicts whose val is 0, forcing keys to strings
             for k in data:  # Note: maybe sort these and disallow different types
                 ktype = type(k)
                 group_key = group.create_group(clean_key(k))  # Create new group whose name is key
@@ -437,7 +434,7 @@ def main():
     pack(c, c_file)
     c_ = unpack(c_file)
 
-    # Dict of homogenous stuff - k,v pairs
+    # Dict of homogeneous stuff - k,v pairs
     d = {
         'a': 123,
         'b': 456,
@@ -447,6 +444,16 @@ def main():
     pack(d, d_file)
     d_ = unpack(d_file)
 
+    # Dict of homogeneous stuff - keys are not strs
+    d2 = {
+        1: 123,
+        2: 456,
+        4: 789
+    }
+    d2_file = os.path.join(test_dir, 'd2.h5')
+    pack(d2, d2_file)
+    d2_ = unpack(d2_file)
+
     # Dict of homogeneous keys and heterogenous vals
     e = {
         'a': 123,
@@ -455,6 +462,15 @@ def main():
     e_file = os.path.join(test_dir, 'e.h5')
     pack(e, e_file)
     e_ = unpack(e_file)
+
+    # Dict of homogeneous non-string keys and heterogenous vals - the keys get coerced to strings when packed and converted back when unpacked
+    e2 = {
+        11: 123,
+        22: 'cde'
+    }
+    e2_file = os.path.join(test_dir, 'e2.h5')
+    pack(e2, e2_file)
+    e2_ = unpack(e2_file)
 
     # Write a numpy array
     f = np.zeros((5,3))
@@ -500,6 +516,12 @@ def main():
     j_file = os.path.join(test_dir, 'j.h5')
     pack(j, j_file)
     j_ = unpack(j_file)
+
+    # A homogeneous set of non-strings
+    k = {12, 123, 1234}
+    k_file = os.path.join(test_dir, 'k.h5')
+    pack(k, k_file)
+    k_ = unpack(k_file)
 
     return 0
 
