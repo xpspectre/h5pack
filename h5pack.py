@@ -418,29 +418,11 @@ def main():
     # Make some test data
     test_dir = 'data'
 
-    # Single simple string
-    a = 'abc'
     a_file = os.path.join(test_dir, 'a.h5')
-    pack(a, a_file)
+    a = pack(('abc', [123, 456], 1.23), a_file)
     a_ = unpack(a_file)
 
-    # List of all strings
-    b = ['abc', 'def', 'ghij']
-    b_file = os.path.join(test_dir, 'b.h5')
-    pack(b, b_file)
-    b_ = unpack(b_file)
-
-    # List of numbers
-    b2 = [1, 3, 5]
-    b2_file = os.path.join(test_dir, 'b2.h5')
-    pack(b2, b2_file)
-    b2_ = unpack(b2_file)
-
-    # Tuple of mixed stuff
-    c = (123, 'abcd')
-    c_file = os.path.join(test_dir, 'c.h5')
-    pack(c, c_file)
-    c_ = unpack(c_file)
+    return
 
     # Dict of homogeneous stuff - k,v pairs
     d = {
