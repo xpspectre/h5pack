@@ -9,6 +9,7 @@ from h5pack import pack, unpack
 class TestH5Pack():
     """Test roundtripping (pack and then unpack gives the same result)
     TODO: Test actual file format when it's nailed down
+    TODO: An alternative/additional method is to use in-memory files?
     """
     def setup(self):
         """Generate random filename for export
@@ -25,6 +26,7 @@ class TestH5Pack():
     def check_roundtrip(self, x, debug=False):
         """Helper method that packs, unpacks, and checks that the data x is unchanged.
         Has an extra option to make a copy of the file for debugging.
+        TODO: Need to recursively check elements, including calling all() on Numpy arrays?
         """
         pack(x, self.filename)
         if debug:
@@ -44,6 +46,11 @@ class TestH5Pack():
     def test_single_npnum(self):
         self.check_roundtrip(np.int64(123))
         self.check_roundtrip(np.float32(1.234))
+
+    def test_ndarray(self):
+        """Numpy array is a "primitive"/"scalar"""
+        # self.check_roundtrip(np.zeros((5,3)))
+        # self.check_roundtrip(np.ones((1, 3), dtype=np.int64))
 
     # Homogeneous indexed collections
     def test_list_strs(self):
@@ -73,4 +80,4 @@ class TestH5Pack():
 
     # Nested (heterogeneous) indexed collections
     def test_nested_tuple(self):
-        self.check_roundtrip(('abc', [123, 456], 1.23), debug=True)
+        self.check_roundtrip(('abc', [123, 456], 1.23))
