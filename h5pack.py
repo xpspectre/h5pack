@@ -9,6 +9,30 @@ indexed_types = {tuple, list}
 associative_types = {dict, set}
 
 
+# For converting data_type metadata
+str_type_map = {
+    'int': int,
+    'float': float,
+    'str': str,
+    'tuple': tuple,
+    'list': list,
+    'dict': dict,
+    'set': set,
+    'ndarray': np.ndarray,
+    'int8': np.int8,  # Yeah, manually coding all the supported Numpy types here... could use np.ScalarType
+    'int16': np.int16,
+    'int32': np.int32,
+    'int64': np.int64,
+    'uint8': np.uint8,
+    'uint16': np.uint16,
+    'uint32': np.uint32,
+    'uint64': np.uint64,
+    'float16': np.float16,
+    'float32': np.float32,
+    'float64': np.float64,
+}
+
+
 def is_integer_type(x_type):
     if x_type == int or issubclass(x_type, np.integer):
         return True
@@ -51,14 +75,26 @@ def write_primitive(group, data):
     write_attrs(ds, {'data_type': data_type})
 
 
+def read_primitive(group):
+    """"""
+    ds = group['val']
+    data_type = str_type_map[ds.attrs['data_type']]
+    val = ds[...]
+    if data_type == str:
+        val = str(np.char.decode(val, 'utf-8'))
+    elif is_number_type(data_type):
+        val = data_type(val)
+    else:
+        raise ValueError('Scalar data type not recognized')
+    return val
+
+
 def write_indexed(group, data, ds_kwargs):
     """
     2 cases:
         1. Homogeneous primitives: turn into a single dataset
         2. Heterogeneous
     """
-    data_type = type(data)
-
     # See if this is homogeneous primitives
     homogeneous_type = 'homogeneous'
     type0 = type(data[0])
@@ -68,6 +104,7 @@ def write_indexed(group, data, ds_kwargs):
             homogeneous_type = 'heterogeneous'
             break
         # TODO: Special case of ints and floats mixed -> homogeneous float
+    write_attrs(group, {'homogeneous_type': homogeneous_type})
 
     # Save homogenous index collection type as numpy array
     if homogeneous_type == 'homogeneous':
@@ -78,7 +115,7 @@ def write_indexed(group, data, ds_kwargs):
             ds = group.create_dataset('val', data=np.string_(data),  **ds_kwargs)
         else:
             raise Exception('should not reach here')
-        # write_attrs(ds, {'data_type': item_type})  # should be the index's type; redundant with the type inside the item
+        write_attrs(ds, {'data_type': item_type})
     elif homogeneous_type == 'heterogeneous':
         for i, item in enumerate(data):
             item_type = type(item)
@@ -88,6 +125,48 @@ def write_indexed(group, data, ds_kwargs):
                 write_collection(group_i, item, ds_kwargs)
             else:
                 write_primitive(group_i, item)
+
+
+def validate_inds(keys):
+    """Validate that the string keys in a group's sub-items form a valid set of indexes for a list/tuple. Raise
+    ValueError if it fails. Note: keys strs are dumb lex order.
+    """
+    inds = sorted(int(ind) for ind in keys)
+    target_inds = list(range(len(inds)))
+    if inds != target_inds:
+        raise ValueError('Keys don''t make up valid indexes')
+
+
+def read_indexed(group):
+    """Python datatypes (not Numpy)"""
+    data_type = str_type_map[group.attrs['data_type']]
+    homogeneous_type = group.attrs['homogeneous_type']
+
+    # Read homogeneous array as single val
+    if homogeneous_type == 'homogeneous':
+        ds = group['val']
+        item_type = str_type_map[ds.attrs['data_type']]
+        vals = ds[...]
+        if item_type == str:
+            vals = list(val.decode('utf-8') for val in vals)
+        else:
+            vals = list(item_type(val) for val in vals)
+    elif homogeneous_type == 'heterogeneous':
+        # Make sure the indexes are valid
+        keys = group.keys()
+        validate_inds(keys)
+        vals = [None] * len(keys)
+        for ind_str, val in group.items():
+            ind = int(ind_str)
+            vals[ind] = read_data(val)
+    else:
+        raise ValueError('Homogeneous type not recognized')
+
+    # Convert list to tuple if needed
+    if data_type == tuple:
+        vals = tuple(vals)
+
+    return vals
 
 
 def clean_key(key):
@@ -113,6 +192,7 @@ def write_associative(group, data, ds_kwargs):
         for k, v in data.items():
             if type(k) != ktype0 or type(v) != vtype0:
                 homogeneous_type = 'heterogeneous'
+        write_attrs(group, {'homogeneous_type': homogeneous_type})
 
         # Save homogeneous dict as 2 arrays
         if homogeneous_type == 'homogeneous':
@@ -150,6 +230,7 @@ def write_associative(group, data, ds_kwargs):
         for k in data:
             if type(k) != ktype0:
                 homogeneous_type = 'heterogeneous'
+        write_attrs(group, {'homogeneous_type': homogeneous_type})
 
         # Save homogeneous set as an array
         if homogeneous_type == 'homogeneous':
@@ -172,6 +253,43 @@ def write_associative(group, data, ds_kwargs):
         raise Exception('should not reach here')
 
 
+def read_associative(group):
+    """"""
+    data_type = str_type_map[group.attrs['data_type']]
+    homogeneous_type = group.attrs['homogeneous_type']
+
+    if data_type == dict:
+        if homogeneous_type == 'homogeneous':
+            ds_keys = group['keys']
+            ktype = str_type_map[ds_keys.attrs['data_type']]
+            keys = ds_keys[...]
+            if ktype == str:
+                keys = list(key.decode('utf-8') for key in keys)
+            else:
+                keys = list(ktype(key) for key in keys)
+
+            ds_vals = group['vals']
+            vtype = str_type_map[ds_vals.attrs['data_type']]
+            vals = ds_vals[...]
+            if vtype == str:
+                vals = list(val.decode('utf-8') for val in vals)
+            else:
+                vals = list(vtype(val) for val in vals)
+
+            return {k: v for k, v in zip(keys, vals)}
+        else:
+            d = {}
+            for key, key_group in group.items():
+                ktype = str_type_map[key_group.attrs['data_type']]
+                if ktype != str:  # Try to turn non-str key back into original type - should just be ints
+                    key = ktype(key)
+                val = read_data(key_group)
+                d[key] = val
+            return d
+
+    raise NotImplementedError
+
+
 def write_collection(group, data, ds_kwargs):
     """"""
     data_type = type(data)
@@ -181,11 +299,25 @@ def write_collection(group, data, ds_kwargs):
         write_indexed(group, data, ds_kwargs)
     elif data_type in associative_types:
         write_associative(group, data, ds_kwargs)
-    elif data_type is np.ndarray:
-        ds = group.create_dataset('val', data=data,  **ds_kwargs)
+    elif data_type == np.ndarray:
+        ds = group.create_dataset('val', data=data, **ds_kwargs)
         write_attrs(ds, {'data_type': data_type})
     else:
         raise Exception('should not reach here')
+
+
+def read_collection(group):
+    """"""
+    data_type = str_type_map[group.attrs['data_type']]
+
+    if data_type in indexed_types:
+        return read_indexed(group)
+    elif data_type in associative_types:
+        return read_associative(group)
+    elif data_type == np.ndarray:
+        return group['val'][...]
+    else:
+        raise Exception('Collection type not recognized')
 
 
 def write_data(group, data, ds_kwargs):
@@ -203,10 +335,22 @@ def write_data(group, data, ds_kwargs):
         write_primitive(group, data)
     elif data_type in collection_types:
         write_collection(group, data, ds_kwargs)
+        write_attrs(group, {'data_type': data_type})
     else:
         raise ValueError('Data not one of the valid primitive or collection types')
 
-    write_attrs(group, {'data_type': data_type})
+
+def read_data(group):
+    """"""
+    data_type_str = group.attrs.get('data_type')
+    if data_type_str is None:  # primitive type not in a collection doesn't a data_type on the wrapper
+        return read_primitive(group)
+
+    data_type = str_type_map[data_type_str]
+    if data_type in collection_types:
+        return read_collection(group)
+    else:  # primitive type in a collection
+        return read_primitive(group)
 
 
 def pack(data, filename, compression=True):
@@ -230,8 +374,10 @@ def pack(data, filename, compression=True):
 
 def unpack(filename):
     """Unpack data from filename"""
-
-    return 0
+    with h5py.File(filename, 'r') as f:
+        # Recursively build up read data
+        data = read_data(f)
+    return data
 
 
 def main():
@@ -248,11 +394,19 @@ def main():
     b = ['abc', 'def', 'ghij']
     b_file = os.path.join(test_dir, 'b.h5')
     pack(b, b_file)
+    b_ = unpack(b_file)
+
+    # List of numbers
+    b2 = [1, 3, 5]
+    b2_file = os.path.join(test_dir, 'b2.h5')
+    pack(b2, b2_file)
+    b2_ = unpack(b2_file)
 
     # Tuple of mixed stuff
     c = (123, 'abcd')
     c_file = os.path.join(test_dir, 'c.h5')
     pack(c, c_file)
+    c_ = unpack(c_file)
 
     # Dict of homogenous stuff - k,v pairs
     d = {
@@ -262,6 +416,7 @@ def main():
     }
     d_file = os.path.join(test_dir, 'd.h5')
     pack(d, d_file)
+    d_ = unpack(d_file)
 
     # Dict of homogeneous keys and heterogenous vals
     e = {
@@ -270,11 +425,13 @@ def main():
     }
     e_file = os.path.join(test_dir, 'e.h5')
     pack(e, e_file)
+    e_ = unpack(e_file)
 
     # Write a numpy array
     f = np.zeros((5,3))
     f_file = os.path.join(test_dir, 'f.h5')
     pack(f, f_file)
+    f_ = unpack(f_file)
 
     # Write a dict with mixed stuff, including numpy arrays
     g = {
@@ -285,6 +442,7 @@ def main():
     }
     g_file = os.path.join(test_dir, 'g.h5')
     pack(g, g_file)
+    g_ = unpack(g_file)
 
     # Write a nested dict of dicts - everything heterogenous
     h = {
@@ -299,6 +457,12 @@ def main():
     }
     h_file = os.path.join(test_dir, 'h.h5')
     pack(h, h_file)
+
+    # A numpy scalar
+    i = np.int64(123)
+    i_file = os.path.join(test_dir, 'i.h5')
+    pack(i, i_file)
+    i_ = unpack(i_file)
 
     return 0
 
