@@ -184,12 +184,7 @@ def write_indexed(group, name, data, ds_kwargs):
     else:  # Save heterogeneous as a subgroup with indexed vals
         sub_group = group.create_group(name)
         for i, item in enumerate(data):
-            item_type = type(item)
-            ind_str = '{}'.format(i)
-            if is_collection_type(item_type):
-                write_collection(sub_group, ind_str, item, ds_kwargs)
-            else:
-                write_primitive(sub_group, ind_str, item)
+            write_data(sub_group, '{}'.format(i), item, ds_kwargs)
         write_attrs(sub_group, {'data_type': data_type, 'collection_type': data_type, 'homogeneous': False})
         return sub_group
 
