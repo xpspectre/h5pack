@@ -70,6 +70,9 @@ class TestH5Pack():
         self.check_roundtrip(True)
         self.check_roundtrip(False)
 
+    def test_single_none(self):
+        self.check_roundtrip(None)
+
     def test_single_npnum(self):
         self.check_roundtrip(np.int64(123))
         self.check_roundtrip(np.float32(1.234))
@@ -83,6 +86,12 @@ class TestH5Pack():
     def test_list_strs(self):
         self.check_roundtrip(['abc', 'def', 'ghij'])
 
+    def test_list_bools(self):
+        self.check_roundtrip([True, False, True])
+
+    def test_list_nones(self):
+        self.check_roundtrip([None, None, None])
+
     def test_list_ints(self):
         self.check_roundtrip([1, 2, 3, 4])
 
@@ -91,6 +100,12 @@ class TestH5Pack():
 
     def test_tuple_strs(self):
         self.check_roundtrip(('abc', 'def', 'ghij'))
+
+    def test_tuple_bools(self):
+        self.check_roundtrip((True, False, True))
+
+    def test_tuple_nones(self):
+        self.check_roundtrip((None, None, None))
 
     def test_tuple_ints(self):
         self.check_roundtrip((1, 2, 3, 4))
@@ -144,7 +159,8 @@ class TestH5Pack():
             1: {'qqq', 'rrr', 'sss'},
             2: {'x': 1.2, 'y': 3.5},
             3: True,
-            4: [True, False]
+            4: [True, False],
+            5: None
         }
         self.check_roundtrip(x)
 

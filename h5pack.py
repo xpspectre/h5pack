@@ -2,7 +2,7 @@ import h5py
 import numpy as np
 
 numeric_types = {int, float}
-primitive_types = {int, float, str, bool, np.ndarray}  # Numpy array behaves like a primitive for most purposes
+primitive_types = {int, float, str, bool, type(None), np.ndarray}  # Numpy array behaves like a primitive for most purposes
 collection_types = {tuple, list, dict, set}
 indexed_types = {tuple, list}
 associative_types = {dict, set}
@@ -16,6 +16,7 @@ str_type_map = {
     'float': float,
     'str': str,
     'bool': bool,
+    'NoneType': type(None),
     'tuple': tuple,
     'list': list,
     'dict': dict,
@@ -68,9 +69,12 @@ def is_collection_str(x_str):
 def is_indexed_homogeneous(data):
     """Returns True for homogeneous, False for heterogeneous.
     TODO: Special case of ints and floats mixed -> homogeneous float
+    An indexed collection with any None (including only made of Nones) is heterogeneous.
     ndarray behaves like collection for this purpose.
     """
     type0 = type(data[0])
+    if type0 == type(None):
+        return False
     for item in data:
         item_type = type(item)
         if item_type != type0 or item_type in collection_types or item_type == np.ndarray:
@@ -144,6 +148,8 @@ def write_primitive(group, name, data):
     # Write dataset
     if data_type == str:
         ds = group.create_dataset(name, data=np.string_(data))
+    elif data_type == type(None):
+        ds = group.create_dataset(name, data=0)
     else:
         ds = group.create_dataset(name, data=data)
 
@@ -161,6 +167,8 @@ def read_primitive(group, name):
         val = str(np.char.decode(val, 'utf-8'))
     elif data_type == bool:
         val = bool(val)
+    elif data_type == type(None):
+        val = None
     elif is_number_type(data_type):
         val = data_type(val)  # Convert back to scalar Python built-in or Numpy number type
     elif data_type == np.ndarray:
