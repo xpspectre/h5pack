@@ -66,6 +66,10 @@ class TestH5Pack():
     def test_single_float(self):
         self.check_roundtrip(1.23)
 
+    def test_single_bool(self):
+        self.check_roundtrip(True)
+        self.check_roundtrip(False)
+
     def test_single_npnum(self):
         self.check_roundtrip(np.int64(123))
         self.check_roundtrip(np.float32(1.234))
@@ -138,7 +142,9 @@ class TestH5Pack():
             'c': [1,2,3],
             'd': (1, 'a', 3.5),
             1: {'qqq', 'rrr', 'sss'},
-            2: {'x': 1.2, 'y': 3.5}
+            2: {'x': 1.2, 'y': 3.5},
+            3: True,
+            4: [True, False]
         }
         self.check_roundtrip(x)
 

@@ -2,7 +2,7 @@ import h5py
 import numpy as np
 
 numeric_types = {int, float}
-primitive_types = {int, float, str, np.ndarray}  # Numpy array behaves like a primitive for most purposes
+primitive_types = {int, float, str, bool, np.ndarray}  # Numpy array behaves like a primitive for most purposes
 collection_types = {tuple, list, dict, set}
 indexed_types = {tuple, list}
 associative_types = {dict, set}
@@ -15,6 +15,7 @@ str_type_map = {
     'int': int,
     'float': float,
     'str': str,
+    'bool': bool,
     'tuple': tuple,
     'list': list,
     'dict': dict,
@@ -158,6 +159,8 @@ def read_primitive(group, name):
     val = ds[...]
     if data_type == str:
         val = str(np.char.decode(val, 'utf-8'))
+    elif data_type == bool:
+        val = bool(val)
     elif is_number_type(data_type):
         val = data_type(val)  # Convert back to scalar Python built-in or Numpy number type
     elif data_type == np.ndarray:
