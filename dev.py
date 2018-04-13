@@ -15,8 +15,12 @@ def main():
     # a =('abc', 'def', 'ghij')
     # a = (123, 'abc')
     # a = ('abc', [123, 456], 1.23)
+    # a = True
+    # a = [True, False, True]
     # a = None
-    a = [None, None, None]
+    # a = [None, None, None]
+
+    # a = [{'x': 1.2, 'y': 3.5}, 1]
 
     # a = {
     #     'a': 123,
@@ -44,12 +48,26 @@ def main():
     # a = {'a', 'ab', 'abc'}
     # a = {'a', 1}
 
+    a = {
+        'a': [1,2,3],
+        'b': [True, True, False]
+    }
+
     # a = {
     #     'a': 123,
     #     'b': 'abc',
     #     'c': np.ones((2,4)),
     #     1: {'qqq', 'rrr', 'sss'},
     #     2: {'x': 1.2, 'y': 3.5}
+    # }
+
+    # Matlab version with keys that are all strs that are valid identifiers
+    # a = {
+    #     'a': 123,
+    #     'b': 'abc',
+    #     'c': np.ones((2,4)),
+    #     'd': {'qqq', 'rrr', 'sss'},
+    #     'e': {'x': 1.2, 'y': 3.5}
     # }
 
     # a = {

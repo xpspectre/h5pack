@@ -148,6 +148,8 @@ def write_primitive(group, name, data):
     # Write dataset
     if data_type == str:
         ds = group.create_dataset(name, data=np.string_(data))
+    elif data_type == bool:
+        ds = group.create_dataset(name, data=int(data))
     elif data_type == type(None):
         ds = group.create_dataset(name, data=0)
     else:
@@ -188,6 +190,8 @@ def write_indexed(group, name, data, ds_kwargs):
         item_type = type0
         if item_type == str:
             ds = group.create_dataset(name, data=np.string_(data), **ds_kwargs)
+        elif item_type == bool:
+            ds = group.create_dataset(name, data=np.int8(data), **ds_kwargs)
         else:
             ds = group.create_dataset(name, data=data, **ds_kwargs)
         write_attrs(ds, {'data_type': item_type, 'collection_type': data_type, 'homogeneous': True})
@@ -213,6 +217,8 @@ def read_indexed(group, name):
         vals = ds[...]
         if item_type == str:
             vals = list(val.decode('utf-8') for val in vals)
+        elif item_type == bool:
+            vals = list(bool(val) for val in vals)
         else:
             vals = list(item_type(val) for val in vals)
     else:

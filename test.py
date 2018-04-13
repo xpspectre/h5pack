@@ -138,6 +138,12 @@ class TestH5Pack():
     def test_dict_mixed_int_key(self):
         self.check_roundtrip({12: 123, 34: 'cde'})
 
+    def test_dict_mixed_homogeneous(self):
+        self.check_roundtrip({
+            'a': [1, 2, 3],
+            'b': [True, True, False]
+        })
+
     # Homogeneous sets
     def test_set_int(self):
         self.check_roundtrip({1, 2, 3})
@@ -150,6 +156,9 @@ class TestH5Pack():
         self.check_roundtrip({1, 'a'})
 
     # Mixed everything
+    def test_nested_list_dict(self):
+        self.check_roundtrip([{'x': 1.2, 'y': 3.5}, 1])
+
     def test_mixed_everything(self):
         x = {
             'a': 123,
