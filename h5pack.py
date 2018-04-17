@@ -141,12 +141,14 @@ def write_attrs(ds, attrs):
         ds.attrs[k] = v
 
 
-def write_primitive(group, name, data):
+def write_primitive(group, name, data, ds_kwargs):
     """Note: No dataset chunk options (like compression) for scalar"""
     data_type = type(data)
 
     # Write dataset
-    if data_type == str:
+    if data_type == np.ndarray:
+        ds = group.create_dataset(name, data=data, **ds_kwargs)  # enable compression for nonscalar numpy array
+    elif data_type == str:
         ds = group.create_dataset(name, data=np.string_(data))
     elif data_type == bool:
         ds = group.create_dataset(name, data=int(data))
@@ -264,8 +266,8 @@ def write_associative(group, name, data, ds_kwargs):
             if vtype == str:
                 vals = np.string_(vals)
 
-            ds_keys = sub_group.create_dataset('keys', data=keys)
-            ds_vals = sub_group.create_dataset('vals', data=vals)
+            ds_keys = sub_group.create_dataset('keys', data=keys, **ds_kwargs)
+            ds_vals = sub_group.create_dataset('vals', data=vals, **ds_kwargs)
             write_attrs(ds_keys, {'data_type': ktype})
             write_attrs(ds_vals, {'data_type': vtype})
         else:
@@ -380,7 +382,7 @@ def write_data(group, name, data, ds_kwargs, key_type=None):
 
     # Check whether type is primitive or collection
     if is_primitive_type(data_type):
-        group_ = write_primitive(group, name, data)
+        group_ = write_primitive(group, name, data, ds_kwargs)
     elif is_collection_type(data_type):
         group_ = write_collection(group, name, data, ds_kwargs)
     else:
