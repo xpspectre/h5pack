@@ -69,9 +69,13 @@ def is_collection_str(x_str):
 def is_indexed_homogeneous(data):
     """Returns True for homogeneous, False for heterogeneous.
     TODO: Special case of ints and floats mixed -> homogeneous float
+    An empty indexed collection is homogeneous.
     An indexed collection with any None (including only made of Nones) is heterogeneous.
     ndarray behaves like collection for this purpose.
     """
+    if len(data) == 0:
+        return True
+
     type0 = type(data[0])
     if type0 == type(None):
         return False
@@ -84,8 +88,12 @@ def is_indexed_homogeneous(data):
 
 def is_dict_homogeneous(data):
     """Returns True for homogeneous, False for heterogeneous.
+    An empty dict is homogeneous.
     ndarray behaves like collection for this purpose.
     """
+    if len(data) == 0:
+        return True
+
     k0, v0 = next(iter(data.items()))
     ktype0 = type(k0)
     vtype0 = type(v0)
@@ -101,7 +109,12 @@ def is_dict_homogeneous(data):
 
 
 def is_set_homogeneous(data):
-    """Returns True for homogeneous, False for heterogeneous."""
+    """Returns True for homogeneous, False for heterogeneous.
+    An empty set is homogeneous.
+    """
+    if len(data) == 0:
+        return True
+
     k0 = next(iter(data))
     ktype0 = type(k0)
     if ktype0 in collection_types:
@@ -185,15 +198,22 @@ def read_primitive(group, name):
 def write_indexed(group, name, data, ds_kwargs):
     """Write list or tuple"""
     data_type = type(data)
-    homegeneous = is_indexed_homogeneous(data)
-    type0 = type(data[0])
 
-    if homegeneous:  # Save homogenous as numpy array
+    homegeneous = is_indexed_homogeneous(data)
+
+    if len(data) == 0:
+        type0 = type(None)
+    else:
+        type0 = type(data[0])
+
+    if homegeneous:  # Save homogeneous as numpy array
         item_type = type0
         if item_type == str:
             ds = group.create_dataset(name, data=np.string_(data), **ds_kwargs)
         elif item_type == bool:
             ds = group.create_dataset(name, data=np.int8(data), **ds_kwargs)
+        elif item_type == type(None):
+            ds = group.create_dataset(name, data=0)
         else:
             ds = group.create_dataset(name, data=data, **ds_kwargs)
         write_attrs(ds, {'data_type': item_type, 'collection_type': data_type, 'homogeneous': True})
@@ -221,6 +241,8 @@ def read_indexed(group, name):
             vals = list(val.decode('utf-8') for val in vals)
         elif item_type == bool:
             vals = list(bool(val) for val in vals)
+        elif item_type == type(None):
+            vals = []
         else:
             vals = list(item_type(val) for val in vals)
     else:
@@ -254,6 +276,13 @@ def write_associative(group, name, data, ds_kwargs):
 
         # Save homogeneous dict as 2 arrays
         if homogeneous:
+            if len(data) == 0:  # Handle special case of empty dict
+                ds_keys = sub_group.create_dataset('keys', data=0)
+                ds_vals = sub_group.create_dataset('vals', data=0)
+                write_attrs(ds_keys, {'data_type': type(None)})
+                write_attrs(ds_vals, {'data_type': type(None)})
+                return sub_group
+
             keys = []
             vals = []
             for k, v in sorted(data.items()):  # guaranteed to be orderable
@@ -286,7 +315,10 @@ def write_associative(group, name, data, ds_kwargs):
         # Overwrite attrs
         homogeneous = is_set_homogeneous(data)
         if homogeneous:
-            item_type = type(data_list[0])
+            if len(data) == 0:  # Handle special case of empty set
+                item_type = type(None)
+            else:
+                item_type = type(data_list[0])
         else:
             item_type = data_type
         write_attrs(group_, {'data_type': item_type, 'collection_type': data_type, 'homogeneous': homogeneous})
@@ -307,7 +339,9 @@ def read_associative(group, name):
             ds_keys = sub_group['keys']
             ktype = str_type_map[ds_keys.attrs['data_type']]
             keys = ds_keys[...]
-            if ktype == str:
+            if ktype == type(None):  # Handle special case of empty dict
+                return {}
+            elif ktype == str:
                 keys = list(key.decode('utf-8') for key in keys)
             else:
                 keys = list(ktype(key) for key in keys)

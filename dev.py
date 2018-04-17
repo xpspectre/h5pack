@@ -20,6 +20,11 @@ def main():
     # a = None
     # a = [None, None, None]
 
+    # a = ()
+    # a = []
+    # a = {}
+    a = set()
+
     # a = [{'x': 1.2, 'y': 3.5}, 1]
 
     # a = {
@@ -48,10 +53,10 @@ def main():
     # a = {'a', 'ab', 'abc'}
     # a = {'a', 1}
 
-    a = {
-        'a': [1,2,3],
-        'b': [True, True, False]
-    }
+    # a = {
+    #     'a': [1,2,3],
+    #     'b': [True, True, False]
+    # }
 
     # a = {
     #     'a': 123,

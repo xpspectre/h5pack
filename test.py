@@ -120,6 +120,12 @@ class TestH5Pack():
     def test_list_mixed(self):
         self.check_roundtrip([123, 'abc'])
 
+    def test_tuple_empty(self):
+        self.check_roundtrip(())
+
+    def test_list_empty(self):
+        self.check_roundtrip([])
+
     # Nested (heterogeneous) indexed collections
     def test_nested_tuple(self):
         self.check_roundtrip(('abc', [123, 456], 1.23))
@@ -130,6 +136,9 @@ class TestH5Pack():
 
     def test_dict_int_str(self):
         self.check_roundtrip({123: 'b', 456: 'cd', 789: 'efg'})
+
+    def test_dict_empty(self):
+        self.check_roundtrip({})
 
     # Heterogeneous dicts
     def test_dict_mixed_str_key(self):
@@ -150,6 +159,9 @@ class TestH5Pack():
 
     def test_set_str(self):
         self.check_roundtrip({'a', 'ab', 'abc'})
+
+    def test_set_empty(self):
+        self.check_roundtrip(set())
 
     # Heterogeneous sets
     def test_set_mixed(self):
