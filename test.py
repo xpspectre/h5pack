@@ -1,24 +1,22 @@
+import unittest
+import tempfile
 import string
 import random
 import os
 import numpy as np
-from nose.tools import assert_equal, assert_equals
 from h5pack import pack, unpack
 
 
-class TestH5Pack():
+class TestH5Pack(unittest.TestCase):
     """Test roundtripping (pack and then unpack gives the same result)
     TODO: Test actual file format when it's nailed down
-    TODO: An alternative/additional method is to use in-memory files?
     """
-    def setup(self):
-        """Generate random filename for export
-        Could be used for parallel testing later
-        """
-        self.testdir = 'data'
-        self.filename = os.path.join(self.testdir, ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(10)) + '.h5')
+    def setUp(self):
+        """Generate random filename for export"""
+        self.testfile = tempfile.NamedTemporaryFile(delete=False)
+        self.filename = self.testfile.name
 
-    def teardown(self):
+    def tearDown(self):
         """Delete the file, if it exists"""
         if os.path.exists(self.filename):
             os.remove(self.filename)
@@ -32,7 +30,7 @@ class TestH5Pack():
         if debug:
             pack(x, self.filename + '_debug.h5')
         x_ = unpack(self.filename)
-        assert_equal(x, x_)  # the simple comparison should work for most things
+        self.assertEqual(x, x_)  # the simple comparison should work for most things
 
     def check_roundtrip_ndarrays(self, x):
         """Hacked function to check whether a file w/ 1 'level' of Numpy arrays roundtrips.
