@@ -1,7 +1,5 @@
 import unittest
 import tempfile
-import string
-import random
 import os
 import numpy as np
 from h5pack import pack, unpack

@@ -137,7 +137,8 @@ def validate_inds(keys):
 
 def clean_key(key):
     """Ensure key is either an int or else coerced to a string"""
-    # TODO: Possibly more sophisticated handling of this. Right now, just coerce everything into a str (when unpacking, the type may allow going back)
+    # TODO: Possibly more sophisticated handling of this. Right now, just coerce everything into a str
+    #  (when unpacking, the type may allow going back)
     if is_integer_type(type(key)):
         return str(key)
     return str(key)
