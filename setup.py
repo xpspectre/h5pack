@@ -1,15 +1,15 @@
 import setuptools
-import h5pack
 
 main_package = 'h5pack'
 
+exec(open('h5pack/version.py').read())  # when setup.py runs, grab the file contents manually
 
 with open('README.md', 'r', encoding='utf-8') as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name=main_package,
-    version=h5pack.__version__,
+    version=__version__,
     author='Kevin Shi',
     author_email='xpspectre@gmail.com',
     description='HDF5 Easy Serialization Library',
@@ -20,7 +20,7 @@ setuptools.setup(
     license='MIT License',
     packages=[main_package],
     install_requires=[
-        'h5py>=2.9'
+        'h5py>=3.0'
     ],
     classifiers=[
         'Development Status :: 4 - Beta',
