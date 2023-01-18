@@ -9,15 +9,11 @@ class TestH5Pack(unittest.TestCase):
     """Test roundtripping (pack and then unpack gives the same result)
     TODO: Test actual file format when it's nailed down
     """
-    def setUp(self):
-        """Generate random filename for export"""
-        self.testfile = tempfile.NamedTemporaryFile(delete=False)
-        self.filename = self.testfile.name
-
-    def tearDown(self):
-        """Delete the file, if it exists"""
-        if os.path.exists(self.filename):
-            os.remove(self.filename)
+    def run(self, result=None):
+        # Cool way to use context managers in unit test setup/teardown: https://stackoverflow.com/questions/8416208/in-python-is-there-a-good-idiom-for-using-context-managers-in-setup-teardown
+        with tempfile.TemporaryDirectory() as tempdir:
+            self.filename = os.path.join(tempdir, 'tempfile')
+            super().run(result)
 
     def check_roundtrip(self, x, debug=False):
         """Helper method that packs, unpacks, and checks that the data x is unchanged.
